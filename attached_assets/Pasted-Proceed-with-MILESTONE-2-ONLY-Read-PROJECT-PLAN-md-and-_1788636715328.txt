@@ -1,0 +1,80 @@
+Proceed with MILESTONE 2 ONLY.
+
+Read PROJECT_PLAN.md and PROJECT_STATUS.md first.
+
+Implement the persistent analysis workspace foundation.
+
+Goal:
+A user must be able to create an analysis and have its core information persist in the database so it can be reopened later.
+
+Implement only:
+
+1. Database schema for analyses.
+2. Drizzle migration.
+3. Server-side analysis repository/data-access layer.
+4. API endpoints for:
+   - create analysis
+   - list analyses
+   - get one analysis
+   - update analysis
+5. Proper request validation.
+6. Proper error handling.
+7. Connect the existing CASCADE frontend to these real endpoints.
+8. Create the basic New Analysis form.
+9. Create the basic Analysis Workspace page.
+10. Create the History/list view using real persisted data.
+
+Use the existing app shell and navigation from Milestone 1.
+
+IMPORTANT — FREE PLAN / CREDIT CONSERVATION:
+
+- Do NOT implement authentication yet unless the existing scaffold requires it for this milestone.
+- Do NOT implement AI yet.
+- Do NOT implement evidence uploads yet.
+- Do NOT implement graph simulation yet.
+- Do NOT implement cascade detection yet.
+- Do NOT implement timeline visualization yet.
+- Do NOT implement the final report yet.
+- Do NOT redesign the application.
+- Do NOT replace working Milestone 1 components unnecessarily.
+- Do NOT add unnecessary dependencies.
+- Do NOT create fake data that will remain in the final application.
+- Make targeted edits only.
+- Keep responses concise.
+- Do not repeatedly inspect unchanged files.
+
+Database requirements:
+
+Use the existing PostgreSQL + Drizzle architecture.
+
+An analysis should have, at minimum, appropriate fields for:
+- id
+- name/title
+- description/context
+- decision information
+- status
+- created timestamp
+- updated timestamp
+
+Choose additional fields only when justified by the existing PROJECT_PLAN.md.
+
+Follow proper database constraints and indexes.
+
+API requirements:
+
+Use the existing OpenAPI contract where possible.
+
+Keep API responses typed and validated.
+
+After implementation:
+
+1. Run database/migration checks.
+2. Run typecheck.
+3. Run production build.
+4. Fix only relevant errors.
+5. Verify the main analysis flow.
+6. Update PROJECT_STATUS.md.
+7. Update TODO.md if it exists.
+8. Stop.
+
+DO NOT START MILESTONE 3.

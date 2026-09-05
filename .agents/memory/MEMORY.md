@@ -1,0 +1,1 @@
+- [Drizzle workspace checks](drizzle-workspace-check.md) — use push and database inspection because standalone drizzle-kit check rejects the existing workspace config.

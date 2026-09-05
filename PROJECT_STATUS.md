@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Milestone 1 complete — foundation implemented; stopped before Milestone 2.**
+**Milestone 2 complete — persistence-backed analysis workspaces implemented; stopped before Milestone 3.**
 
-The CASCADE application shell, route structure, shared visual foundation, and initial OpenAPI/client contract are in place. Database, authentication, AI, and analysis functionality remain intentionally deferred.
+The CASCADE application shell, route structure, shared visual foundation, OpenAPI/client contract, and first persistence-backed analysis flow are in place. Authentication, AI, evidence uploads, graph simulation, cascade paths, timeline, reports, and recommendations remain intentionally deferred.
 
 ## Completed work
 
@@ -33,25 +33,33 @@ The CASCADE application shell, route structure, shared visual foundation, and in
 - Regenerated the React Query client and Zod schemas from the OpenAPI contract.
 - Verified the CASCADE package typecheck and production build.
 - Started the CASCADE preview workflow and confirmed the overview renders without browser errors.
+- Added the PostgreSQL `analyses` table with UUID identifiers, decision brief fields, status, timestamps, and indexes.
+- Generated and applied the Drizzle migration for the analyses table.
+- Added a repository/data-access layer and Express handlers for:
+  - listing analyses
+  - creating an analysis
+  - loading an analysis workspace
+  - updating an analysis workspace
+- Added request validation, blank-field checks, 400/404 responses, request logging, and centralized 500 responses.
+- Connected the new-analysis form, real analysis history, and analysis workspace editor to the persistence API.
+- Verified the API create → list → get → update flow and rendered the persistence-backed workspace in the preview.
 
 ## Remaining work
 
-1. Add PostgreSQL schema and persistent analysis history.
-2. Add authentication and authorization.
-3. Add structured AI extraction with validated outputs.
-4. Add the deterministic cascade engine and scenario templates.
-5. Add graph, path, and timeline visualizations.
-6. Add risk scoring, recommendations, and report generation.
-7. Add focused tests, hardening, and deployment configuration.
+1. Add authentication and authorization.
+2. Add structured AI extraction with validated outputs.
+3. Add the deterministic cascade engine and scenario templates.
+4. Add graph, path, and timeline visualizations.
+5. Add risk scoring, recommendations, and report generation.
+6. Add focused tests, hardening, and deployment configuration.
 
 ## Known issues
 
-- The OpenAPI contract exists, but CASCADE domain API handlers are not implemented yet.
-- No database tables or migrations exist yet.
+- The OpenAPI contract is ahead of the implementation for graph, scenarios, simulations, paths, and timeline endpoints.
 - No authentication or authorization exists yet.
 - No AI integration has been connected yet.
-- No graph, simulation, timeline, report, or history data exists yet.
-- The current screens are foundation states only; they are not detailed feature implementations.
+- No graph, simulation, timeline, report, or recommendation data exists yet.
+- Evidence uploads and context capture remain foundation states.
 - The production build emits a non-blocking Vite sourcemap warning from the scaffolded tooltip component.
 
 ## Important decisions

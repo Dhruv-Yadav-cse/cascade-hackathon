@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowRight,
   BarChart3,
@@ -7,6 +7,7 @@ import {
   GitBranch,
   Layers3,
   LockKeyhole,
+  Network,
   PanelTop,
   Radar,
   ScrollText,
@@ -15,21 +16,61 @@ import {
   Timer,
 } from 'lucide-react';
 import {
+  getGetAnalysisQueryKey,
   getHealthCheckQueryKey,
-  useAnalyzeAnalysis,
+  getListAnalysesQueryKey,
+  type Analysis,
   useCreateAnalysis,
+  useGetAnalysis,
   useHealthCheck,
+  useListAnalyses,
   useSimulateScenario,
   useUpdateAnalysis,
 } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Link, useLocation, useParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  ErrorState,
   EmptyState,
   FoundationChecklist,
   NewAnalysisLink,
   PageIntro,
+  SkeletonState,
 } from '@/components/ready-state';
+
+type QueryStateValue = {
+  isLoading?: boolean;
+  isPending?: boolean;
+  isError: boolean;
+  refetch: () => unknown;
+  data?: unknown;
+};
+
+function QueryState({
+  query,
+  children,
+  empty,
+}: {
+  query: QueryStateValue;
+  children: ReactNode;
+  empty: ReactNode;
+}) {
+  if (query.isLoading || query.isPending) return <SkeletonState />;
+  if (query.isError) return <ErrorState onRetry={() => void query.refetch()} />;
+  if (!query.data || (Array.isArray(query.data) && query.data.length === 0)) {
+    return <>{empty}</>;
+  }
+  return <>{children}</>;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Something went wrong. Please try again.';
+}
 
 function PageFrame({ children }: { children: ReactNode }) {
   return <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-8 sm:py-10 lg:px-10">{children}</div>;
@@ -37,6 +78,8 @@ function PageFrame({ children }: { children: ReactNode }) {
 
 export function OverviewPage() {
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), retry: false, staleTime: 30_000 } });
+  const analyses = useListAnalyses({ query: { queryKey: getListAnalysesQueryKey(), retry: false } });
+  const records = analyses.data ?? [];
 
   return (
     <PageFrame>
@@ -74,31 +117,79 @@ export function OverviewPage() {
         </div>
       </div>
 
-      <EmptyState icon={Layers3} title="No analysis workspaces yet" description="Your completed and in-progress decisions will appear here once the analysis service is connected. Start a workspace when you are ready to make the signal path explicit." action={<NewAnalysisLink />} />
+      <QueryState
+        query={analyses}
+        empty={<EmptyState icon={Layers3} title="No analysis workspaces yet" description="Your completed and in-progress decisions will appear here. Start a workspace when you are ready to make the signal path explicit." action={<NewAnalysisLink />} />}
+      >
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          {records.map((analysis) => (
+            <Link key={analysis.id} href={`/analyses/${analysis.id}/analysis`} data-testid={`link-analysis-${analysis.id}`} className="group flex flex-col gap-4 border-b border-border p-5 transition-colors last:border-0 hover:bg-muted/45 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="mt-0.5 grid size-9 place-items-center rounded-lg bg-primary/15 text-foreground"><Network className="size-4" /></span>
+                <div>
+                  <h3 className="font-bold tracking-[-.02em] group-hover:text-accent">{analysis.title}</h3>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[.1em] text-muted-foreground">{analysis.status} <span className="mx-1.5 text-border">/</span> Updated {new Date(analysis.updatedAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 pl-13 sm:pl-0">
+                {analysis.riskScore !== null && analysis.riskScore !== undefined && <Badge variant="outline" className="font-mono text-[10px]">{analysis.riskScore} risk</Badge>}
+                <ArrowRight className="size-4 text-muted-foreground/50 transition-transform group-hover:translate-x-1 group-hover:text-accent" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </QueryState>
     </PageFrame>
   );
 }
 
 export function NewAnalysisPage() {
   const createAnalysis = useCreateAnalysis();
-  const updateAnalysis = useUpdateAnalysis();
+  const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+  const [title, setTitle] = useState('');
+  const [decision, setDecision] = useState('');
+  const [objective, setObjective] = useState('');
+  const [horizon, setHorizon] = useState('12 months');
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    createAnalysis.mutate(
+      {
+        data: {
+          title: title.trim(),
+          decision: decision.trim(),
+          ...(objective.trim() ? { objective: objective.trim() } : {}),
+          horizon,
+        },
+      },
+      {
+        onSuccess: (analysis) => {
+          void queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+          navigate(`/analyses/${analysis.id}/analysis`);
+        },
+      },
+    );
+  }
+
   return (
     <PageFrame>
-      <PageIntro eyebrow="New analysis / Decision intake" title={<>Name the decision<br /><span className="text-muted-foreground/45">before mapping the risk.</span></>} description="A focused intake gives every downstream consequence a stable reference point. This guided surface will connect to your workspace once the API is enabled." />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.65fr)]">
+      <PageIntro eyebrow="New analysis / Decision intake" title={<>Name the decision<br /><span className="text-muted-foreground/45">before mapping the risk.</span></>} description="A focused intake gives every downstream consequence a stable reference point. Save the brief to create a persistent workspace and continue into context." />
+      <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.65fr)]">
         <section className="rounded-xl border border-border bg-card p-6 sm:p-8">
           <div className="mb-8 flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-lg bg-primary/15"><PanelTop className="size-4" /></span>
             <div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Step 01 / 04</p><h2 className="text-lg font-bold">Decision brief</h2></div>
           </div>
           <div className="space-y-6">
-            <label className="block"><span className="mb-2 block text-sm font-semibold">Working title</span><input disabled data-testid="input-analysis-title" placeholder="e.g. Consolidate the regional operations team" className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
-            <label className="block"><span className="mb-2 block text-sm font-semibold">What decision is being considered?</span><textarea disabled data-testid="input-analysis-decision" placeholder="Describe the action, change, or commitment in plain language." className="min-h-28 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
-            <label className="block"><span className="mb-2 block text-sm font-semibold">What would a good outcome protect?</span><textarea disabled data-testid="input-analysis-objective" placeholder="Optional: name the outcome, constraint, or principle you want to preserve." className="min-h-24 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-semibold">Working title</span><input required value={title} onChange={(event) => setTitle(event.target.value)} disabled={createAnalysis.isPending} data-testid="input-analysis-title" placeholder="e.g. Consolidate the regional operations team" className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-semibold">What decision is being considered?</span><textarea required value={decision} onChange={(event) => setDecision(event.target.value)} disabled={createAnalysis.isPending} data-testid="input-analysis-decision" placeholder="Describe the action, change, or commitment in plain language." className="min-h-28 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-semibold">What would a good outcome protect?</span><textarea value={objective} onChange={(event) => setObjective(event.target.value)} disabled={createAnalysis.isPending} data-testid="input-analysis-objective" placeholder="Optional: name the outcome, constraint, or principle you want to preserve." className="min-h-24 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+            <label className="block"><span className="mb-2 block text-sm font-semibold">Planning horizon</span><select value={horizon} onChange={(event) => setHorizon(event.target.value)} disabled={createAnalysis.isPending} data-testid="select-analysis-horizon" className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"><option>30 days</option><option>90 days</option><option>12 months</option><option>24 months</option></select></label>
           </div>
           <div className="mt-8 flex flex-col justify-between gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
-            <p className="font-mono text-[10px] uppercase tracking-[.12em] text-muted-foreground/70">{createAnalysis.isPending || updateAnalysis.isPending ? 'Connecting…' : 'API connection required'}</p>
-            <Button type="button" disabled data-testid="button-create-analysis">Continue to context <ArrowRight className="size-4" /></Button>
+            <div>{createAnalysis.isError && <p role="alert" className="max-w-sm text-xs font-medium text-destructive">{getErrorMessage(createAnalysis.error)}</p>}<p className="mt-1 font-mono text-[10px] uppercase tracking-[.12em] text-muted-foreground/70">{createAnalysis.isPending ? 'Saving workspace…' : 'Saved to your analysis history'}</p></div>
+            <Button type="submit" disabled={createAnalysis.isPending} data-testid="button-create-analysis">{createAnalysis.isPending ? 'Saving…' : 'Continue to context'} <ArrowRight className="size-4" /></Button>
           </div>
         </section>
         <aside className="space-y-4">
@@ -114,7 +205,7 @@ export function NewAnalysisPage() {
             </div>
           </div>
         </aside>
-      </div>
+      </form>
     </PageFrame>
   );
 }
@@ -124,11 +215,14 @@ function WorkspacePage({
   title,
   description,
   icon: Icon,
+  query,
+  detail,
   emptyTitle,
   emptyDescription,
   action,
 }: {
   eyebrow: string; title: ReactNode; description: string; icon: typeof BookOpen;
+  query?: QueryStateValue; detail?: ReactNode;
   emptyTitle: string; emptyDescription: string; action?: ReactNode;
 }) {
   return (
@@ -139,18 +233,99 @@ function WorkspacePage({
         <div className="rounded-xl border border-border bg-card p-4"><LockKeyhole className="size-5 text-muted-foreground" strokeWidth={1.6} /><p className="mt-5 font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">Data boundary</p><p className="mt-1 text-sm font-bold">No records assumed</p></div>
         <div className="rounded-xl border border-border bg-card p-4"><span className="font-mono text-xl text-primary">—</span><p className="mt-3 font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">Current signal</p><p className="mt-1 text-sm font-bold">Awaiting connection</p></div>
       </div>
-      <EmptyState icon={Icon} title={emptyTitle} description={emptyDescription} action={action} />
+      {query ? <QueryState query={query} empty={<EmptyState icon={Icon} title={emptyTitle} description={emptyDescription} action={action} />}>{detail}</QueryState> : <EmptyState icon={Icon} title={emptyTitle} description={emptyDescription} action={action} />}
     </PageFrame>
   );
 }
 
+function useWorkspaceId() {
+  const params = useParams<{ analysisId: string }>();
+  return params.analysisId ?? '';
+}
+
+function AnalysisBrief({ analysis }: { analysis: Analysis }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 sm:p-8">
+      <div className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Persisted decision brief</p>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-[-.04em]">{analysis.title}</h2>
+        </div>
+        <Badge variant="outline" className="w-fit font-mono text-[10px] uppercase">{analysis.status}</Badge>
+      </div>
+      <dl className="grid gap-5 pt-6 sm:grid-cols-3">
+        <div className="sm:col-span-2"><dt className="font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">Decision</dt><dd className="mt-2 text-sm leading-6">{analysis.decision}</dd></div>
+        <div><dt className="font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">Horizon</dt><dd className="mt-2 text-sm font-semibold">{analysis.horizon}</dd></div>
+        <div className="sm:col-span-3"><dt className="font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">Protected outcome</dt><dd className="mt-2 text-sm leading-6 text-muted-foreground">{analysis.objective || 'No outcome has been specified yet.'}</dd></div>
+      </dl>
+    </div>
+  );
+}
+
 export function ContextPage() {
-  return <WorkspacePage eyebrow="Workspace / Context & evidence" title={<>Build the <span className="text-muted-foreground/45">source layer.</span></>} description="Capture the facts, assumptions, commitments, and evidence that make the decision legible before consequences are inferred." icon={BookOpen} emptyTitle="Context is ready for evidence" emptyDescription="The context canvas will hold source material and structured facts for this decision. Connect the analysis service to begin." />;
+  const id = useWorkspaceId();
+  const query = useGetAnalysis(id, { query: { queryKey: getGetAnalysisQueryKey(id), enabled: Boolean(id), retry: false } });
+  return <WorkspacePage eyebrow="Workspace / Context & evidence" title={<>Build the <span className="text-muted-foreground/45">source layer.</span></>} description="Capture the facts, assumptions, commitments, and evidence that make the decision legible before consequences are inferred." icon={BookOpen} query={query} detail={query.data ? <AnalysisBrief analysis={query.data} /> : null} emptyTitle="Context is ready for evidence" emptyDescription="The context canvas will hold source material and structured facts for this decision." />;
 }
 
 export function AnalysisPage() {
-  const analyze = useAnalyzeAnalysis();
-  return <WorkspacePage eyebrow="Workspace / Analysis" title={<>Find where the signal <span className="text-muted-foreground/45">changes shape.</span></>} description="Review normalized consequences and the relationships that connect them. This is the center of the CASCADE workspace." icon={BrainCircuit} emptyTitle="Analysis workspace is staged" emptyDescription="Once context is connected, this view will expose the structured consequence model without inventing any outcomes." action={<Button type="button" disabled={analyze.isPending} data-testid="button-run-analysis"><BrainCircuit className="size-4" /> Run structured analysis</Button>} />;
+  const id = useWorkspaceId();
+  const query = useGetAnalysis(id, { query: { queryKey: getGetAnalysisQueryKey(id), enabled: Boolean(id), retry: false } });
+  const queryClient = useQueryClient();
+  const update = useUpdateAnalysis();
+  const [title, setTitle] = useState('');
+  const [decision, setDecision] = useState('');
+  const [objective, setObjective] = useState('');
+  const [horizon, setHorizon] = useState('12 months');
+
+  useEffect(() => {
+    if (!query.data) return;
+    setTitle(query.data.title);
+    setDecision(query.data.decision);
+    setObjective(query.data.objective ?? '');
+    setHorizon(query.data.horizon);
+  }, [query.data]);
+
+  function handleUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    update.mutate(
+      {
+        analysisId: id,
+        data: {
+          title: title.trim(),
+          decision: decision.trim(),
+          objective: objective.trim(),
+          horizon,
+        },
+      },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
+          void queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        },
+      },
+    );
+  }
+
+  const detail = query.data ? (
+    <form onSubmit={handleUpdate} className="rounded-xl border border-border bg-card p-6 sm:p-8">
+      <div className="mb-7 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Persisted analysis workspace</p><h2 className="mt-2 text-xl font-bold tracking-[-.03em]">{query.data.title}</h2></div>
+        <Badge variant="outline" className="w-fit font-mono text-[10px] uppercase">{query.data.status}</Badge>
+      </div>
+      <div className="space-y-5">
+        <label className="block"><span className="mb-2 block text-sm font-semibold">Working title</span><input required value={title} onChange={(event) => setTitle(event.target.value)} disabled={update.isPending} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+        <label className="block"><span className="mb-2 block text-sm font-semibold">Decision</span><textarea required value={decision} onChange={(event) => setDecision(event.target.value)} disabled={update.isPending} className="min-h-28 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+        <label className="block"><span className="mb-2 block text-sm font-semibold">Protected outcome</span><textarea value={objective} onChange={(event) => setObjective(event.target.value)} disabled={update.isPending} className="min-h-24 w-full resize-none rounded-lg border border-input bg-background px-3 py-3 text-sm outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-60" /></label>
+        <label className="block"><span className="mb-2 block text-sm font-semibold">Planning horizon</span><select value={horizon} onChange={(event) => setHorizon(event.target.value)} disabled={update.isPending} className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"><option>30 days</option><option>90 days</option><option>12 months</option><option>24 months</option></select></label>
+      </div>
+      {update.isError && <p role="alert" className="mt-5 text-xs font-medium text-destructive">{getErrorMessage(update.error)}</p>}
+      {update.isSuccess && <p className="mt-5 text-xs font-medium text-primary">Workspace saved.</p>}
+      <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">This workspace is ready for context and evidence in the next milestone.</p><Button type="submit" disabled={update.isPending}>{update.isPending ? 'Saving…' : 'Save changes'}</Button></div>
+    </form>
+  ) : null;
+
+  return <WorkspacePage eyebrow="Workspace / Analysis" title={<>Find where the signal <span className="text-muted-foreground/45">changes shape.</span></>} description="Review the saved decision brief and prepare it for the structured consequence model. This is the center of the CASCADE workspace." icon={BrainCircuit} query={query} detail={detail} emptyTitle="Analysis workspace is staged" emptyDescription="The saved decision brief will appear here when it is available." />;
 }
 
 export function GraphPage() {
