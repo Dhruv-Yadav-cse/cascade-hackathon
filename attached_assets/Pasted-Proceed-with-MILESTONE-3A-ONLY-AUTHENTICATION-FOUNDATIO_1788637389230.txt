@@ -1,0 +1,61 @@
+Proceed with MILESTONE 3A ONLY: AUTHENTICATION FOUNDATION.
+
+Read PROJECT_PLAN.md and PROJECT_STATUS.md first.
+
+Goal:
+Add a real user authentication foundation to CASCADE while preserving everything already working in Milestones 1 and 2.
+
+Implement ONLY:
+
+1. Configure the authentication system using the authentication approach already selected in PROJECT_PLAN.md.
+2. Add the minimum required authentication setup.
+3. Add sign-in/sign-out functionality.
+4. Add the authenticated user/session state needed by the frontend.
+5. Add a simple professional login screen that matches the existing CASCADE design.
+6. Add the minimum route protection needed to prevent unauthenticated users from accessing the main application.
+7. Ensure the existing analysis workspace and history continue working after authentication.
+
+IMPORTANT — FREE PLAN / CREDIT CONSERVATION:
+
+- This is ONLY Milestone 3A.
+- Do NOT implement full authorization yet.
+- Do NOT redesign the application.
+- Do NOT modify the cascade engine.
+- Do NOT implement AI.
+- Do NOT implement evidence.
+- Do NOT implement graph functionality.
+- Do NOT implement reports.
+- Do NOT add unnecessary dependencies.
+- Do NOT rewrite working Milestone 1 or 2 code.
+- Make the smallest targeted changes possible.
+- Do not repeatedly inspect unchanged files.
+- Keep your response concise.
+- Do not start Milestone 3B automatically.
+
+AUTHENTICATION RULES:
+
+- Never hardcode credentials or secrets.
+- Use environment variables/integration configuration where required.
+- Do not expose secrets to the frontend.
+- Handle loading, authentication failure, and signed-out states.
+- Preserve the existing database and analysis functionality.
+
+TESTING:
+
+After implementation:
+1. Run typecheck.
+2. Run the production build.
+3. Test the login/session flow if the environment allows it.
+4. Test that unauthenticated users cannot access protected application routes.
+5. Test that the existing application still loads correctly after authentication.
+6. Fix only errors related to this milestone.
+
+Then update PROJECT_STATUS.md with:
+- Milestone 3A completed
+- What was implemented
+- Any configuration I still need to perform manually
+- Any known limitations
+
+STOP after Milestone 3A.
+
+Do NOT begin Milestone 3B.
