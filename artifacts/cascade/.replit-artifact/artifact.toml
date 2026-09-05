@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "CASCADE"
+description = "A professional decision consequence analysis workspace that maps how decisions propagate through connected obligations and entities over time."
+version = "1.0.0"
+id = "artifacts/cascade"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21053
+
+[services.development]
+run = "pnpm --filter @workspace/cascade run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cascade", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cascade/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21053"
+BASE_PATH = "/"

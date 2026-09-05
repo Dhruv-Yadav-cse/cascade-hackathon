@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**Planning only — no CASCADE application implementation has started.**
+**Milestone 1 complete — foundation implemented; stopped before Milestone 2.**
 
-The workspace inspection and MVP architecture plan are complete. Implementation must not begin until the user explicitly requests it.
+The CASCADE application shell, route structure, shared visual foundation, and initial OpenAPI/client contract are in place. Database, authentication, AI, and analysis functionality remain intentionally deferred.
 
 ## Completed work
 
@@ -22,28 +22,37 @@ The workspace inspection and MVP architecture plan are complete. Implementation 
   - timeline visualization
   - risk and recommendation output
 - Created `PROJECT_PLAN.md`.
+- Created the deployable CASCADE React/Vite artifact at `artifacts/cascade`.
+- Added a responsive application shell with:
+  - overview and new-analysis entry points
+  - workspace navigation for context, analysis, graph, scenarios, paths, timeline, recommendations, and report
+  - settings route
+  - desktop sidebar collapse and mobile navigation
+- Added lightweight, reusable page states for every planned MVP route without fabricated analysis records.
+- Added the first OpenAPI contract structure for health, analyses, graph, scenarios, simulation runs, cascade paths, and timeline events.
+- Regenerated the React Query client and Zod schemas from the OpenAPI contract.
+- Verified the CASCADE package typecheck and production build.
+- Started the CASCADE preview workflow and confirmed the overview renders without browser errors.
 
 ## Remaining work
 
-1. User approval to begin implementation.
-2. Create the CASCADE web application artifact and initial API contract.
-3. Add authentication and authorization.
-4. Add PostgreSQL schema and persistent analysis history.
-5. Add structured AI extraction with validated outputs.
-6. Add the deterministic cascade engine and scenario templates.
-7. Add graph, path, and timeline visualizations.
-8. Add risk scoring, recommendations, and report generation.
-9. Add focused tests, hardening, and deployment configuration.
+1. Add PostgreSQL schema and persistent analysis history.
+2. Add authentication and authorization.
+3. Add structured AI extraction with validated outputs.
+4. Add the deterministic cascade engine and scenario templates.
+5. Add graph, path, and timeline visualizations.
+6. Add risk scoring, recommendations, and report generation.
+7. Add focused tests, hardening, and deployment configuration.
 
 ## Known issues
 
-- No CASCADE UI exists yet.
-- No CASCADE domain API endpoints exist yet.
+- The OpenAPI contract exists, but CASCADE domain API handlers are not implemented yet.
 - No database tables or migrations exist yet.
 - No authentication or authorization exists yet.
 - No AI integration has been connected yet.
 - No graph, simulation, timeline, report, or history data exists yet.
-- Existing artifacts are starter/design infrastructure and should not be mistaken for a deployable CASCADE product.
+- The current screens are foundation states only; they are not detailed feature implementations.
+- The production build emits a non-blocking Vite sourcemap warning from the scaffolded tooltip component.
 
 ## Important decisions
 
@@ -58,3 +67,4 @@ The workspace inspection and MVP architecture plan are complete. Implementation 
 - Represent time as discrete horizons and causal events rather than unsupported exact forecasts.
 - Avoid vector search, object storage, paid data providers, billing, teams, and other infrastructure until the core flow proves its value.
 - Work in seven small milestones and stop after each milestone for explicit user direction.
+- Keep future domain API hooks contract-only until their persistence-backed handlers exist; this prevents the foundation preview from generating avoidable 404s.

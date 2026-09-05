@@ -5,7 +5,9 @@
  * CASCADE decision consequence analysis API
  * OpenAPI spec version: 0.2.0
  */
+import type { RunStatus } from './runStatus';
 
-export interface HealthStatus {
-  status: string;
+export interface AnalysisRun {
+  id: string;
+  status: RunStatus;
 }
